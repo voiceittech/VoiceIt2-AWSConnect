@@ -1,0 +1,20 @@
+{
+  "name": "twilioserver",
+  "version": "1.0.0",
+  "description": "AWS Lambda Function to act as the Twilio Call endpoint",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Andrew Lee",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.311.0",
+    "aws-serverless-express": "^3.3.5",
+    "body-parser": "^1.18.3",
+    "express": "^4.16.3",
+    "moment": "^2.22.2",
+    "twilio": "^3.19.2",
+    "voiceit2-nodejs": "^2.0.0"
+  }
+}
