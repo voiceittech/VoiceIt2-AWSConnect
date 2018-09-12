@@ -116,7 +116,7 @@ zip -r deployment.zip *
 6. Add an API Gateway trigger (Create a new API with Security=Open [other options can be left to default values]) & Add
 7. Under "Function code", change the `Code entry type` to be "Upload a .ZIP file" and upload `deployment.zip` you created for Node.js
 8. Change the `Handler` parameter to be "lambda.handler" (as the file `lambda.js` is the entry point for our application)
-9. Add the environment variables `VIAPIKEY` and `VIAPITOKEN` (which correspond to the API 2.0 key/token credentials you can view at [https://voiceit.io/settings](https://voiceit.io/settings)), the `PHRASE` environment variable as "never forget tomorrow is a new day", the `APPNAME` environment variable which should be the equal to the name of your Lambda Function, and the `AMAZONCONNECTPHONENUMBER` environment variable which should be your Amazon Connect phone number which sould be in the form "111-222-3333"
+9. Add the environment variables `VIAPIKEY` and `VIAPITOKEN` (which correspond to the API 2.0 key/token credentials you can view at [https://voiceit.io/settings](https://voiceit.io/settings)), the `PHRASE` environment variable as "never forget tomorrow is a new day", the `APPNAME` environment variable which should be the equal to the name of your Lambda Function, and the `AMAZONCONNECTPHONENUMBER` environment variable which should be your Amazon Connect phone number which should be in the form "111-222-3333"
 10. Save Lambda Function
 11. Take note of the API endpoint which looks like `https://[0000000000].execute-api.[location].amazonaws.com/default/[function_name]` as we will need to add it to Twilio's API later
 
