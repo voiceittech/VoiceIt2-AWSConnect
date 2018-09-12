@@ -1,5 +1,6 @@
 # Amazon Connect & VoiceIt 2.0 Voice Integration Demo
 ### Andrew Lee
+### 09/12/18
 ---
 
 We created this repository for our clients who want to integrate our services with Amazon Connect's Call Center functionality.
