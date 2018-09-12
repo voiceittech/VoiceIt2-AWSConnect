@@ -16,71 +16,6 @@ The directory structure is as follows:
 If you need help setting up your workflow, see [exampleconnectvoiceit](./exampleconnectvoiceit) for inspiration.
 ![example_screenshot](./screenshot.png)
 
----
-
-## Potential Flows Call Flow
-> User successfully enrolls for the first time, and successfully verifies
-
-```
-[Incoming Call] -> Amazon Connect
-Amazon Connect -> connect-twilio-initial Lambda Function
-                  1) Creates a DynamoDB entry
-                  2) sets info.enrolling in DynamoDB to true
-connect-twilio-initial -> Amazon Connect
-Amazon Connect -> [Transfer Call] -> Twilio Phone Number
-Twilio Phone Number -> [HTTP POST] -> twilioserver Lambda Function
-                                      (Enroll User)
-                                        1) set info.enrolling in DynamoDB to false
-                                        2) Successful Enrollment #1-> [HTTP POST] -> twilioserver
-                                        3) Successful Enrollment #2-> [HTTP POST] -> twilioserver
-                                        4) Successful Enrollment #3-> [HTTP POST] -> twilioserver
-twilioserver -> [Transfer Call] -> Amazon Connect
-Amazon Connect -> connect-twilio-initial
-                  1) Modifies info.verifying in DynamoDB to true
-connect-twilio-initial -> Amazon Connect
-Amazon Connect -> [Transfer Call] -> Twilio Phone Number
-Twilio Phone Number -> [HTTP POST] -> twilioserver
-                                      (Verify User)
-                                        1) set info.verifying in DynamoDB to false
-                                        2) Successful Verification -> set info.verified to true and info.authTime to current time in DynamoDB
-twilioserver -> [Call Transfer] -> Amazon Connect
-Amazon Connect -> connect-twilio-initial
-                  1) check if timestamp is 10 seconds or newer
-                  2) Success
-
-connect-twilio-initial -> Amazon Connect (User verified as logged in)
-```
-
-> User is already registered in the system, but does not have enough enrollments to to verify using VoiceIt API 2.0
-```
-[Incoming Call] -> Amazon Connect
-Amazon Connect -> connect-twilio-initial Lambda Function
-                  1) Creates a DynamoDB entry
-                  2) sets info.enrolling in DynamoDB to true
-connect-twilio-initial -> Amazon Connect
-Amazon Connect -> [Transfer Call] -> Twilio Phone Number
-Twilio Phone Number -> [HTTP POST] -> twilioserver Lambda Function
-                                      (Enroll User)
-                                        1) set info.enrolling in DynamoDB to false
-                                        2) Successful Enrollment #1-> [HTTP POST] -> twilioserver
-                                        3) Successful Enrollment #2-> [HTTP POST] -> twilioserver
-                                        4) Successful Enrollment #3-> [HTTP POST] -> twilioserver
-twilioserver -> [Transfer Call] -> Amazon Connect
-Amazon Connect -> connect-twilio-initial
-                  1) Modifies info.verifying in DynamoDB to true
-connect-twilio-initial -> Amazon Connect
-Amazon Connect -> [Transfer Call] -> Twilio Phone Number
-Twilio Phone Number -> [HTTP POST] -> twilioserver
-                                      (Verify User)
-                                        1) set info.verifying in DynamoDB to false
-                                        2) Successful Verification -> set info.verified to true and info.authTime to current time in DynamoDB
-twilioserver -> [Call Transfer] -> Amazon Connect
-Amazon Connect -> connect-twilio-initial
-                  1) check if timestamp is 10 seconds or newer
-                  2) Success
-
-connect-twilio-initial -> Amazon Connect (User verified as logged in)
-```
 
 ---
 
@@ -190,4 +125,120 @@ zip -r deployment.zip *
 12. Route the phone number to do a `POST` request to `https://0000000000.execute-api.[location].amazonaws.com/default/twilioserver` as you saw in the API endpoint above
 
 ---
+
+## Potential Flows Call Flow
+> User successfully enrolls for the first time, and successfully verifies
+
+```
+[Incoming Call] -> Amazon Connect
+Amazon Connect -> connect-twilio-initial Lambda Function
+                  1) Creates a DynamoDB entry
+                  2) sets info.enrolling in DynamoDB to true
+connect-twilio-initial -> Amazon Connect
+Amazon Connect -> [Transfer Call] -> Twilio Phone Number
+Twilio Phone Number -> [HTTP POST] -> twilioserver Lambda Function
+                                      (Enroll User)
+                                        1) set info.enrolling in DynamoDB to false
+                                        2) Successful Enrollment #1-> [HTTP POST] -> twilioserver
+                                        3) Successful Enrollment #2-> [HTTP POST] -> twilioserver
+                                        4) Successful Enrollment #3-> [HTTP POST] -> twilioserver
+twilioserver -> [Transfer Call] -> Amazon Connect
+Amazon Connect -> connect-twilio-initial
+                  1) Modifies info.verifying in DynamoDB to true
+connect-twilio-initial -> Amazon Connect
+Amazon Connect -> [Transfer Call] -> Twilio Phone Number
+Twilio Phone Number -> [HTTP POST] -> twilioserver
+                                      (Verify User)
+                                        1) set info.verifying in DynamoDB to false
+                                        2) Successful Verification -> set info.verified to true and info.authTime to current time in DynamoDB
+twilioserver -> [Call Transfer] -> Amazon Connect
+Amazon Connect -> connect-twilio-initial
+                  1) check if timestamp is 10 seconds or newer
+                  2) Success
+
+connect-twilio-initial -> Amazon Connect (User verified as logged in)
+```
+
+> User is already registered in the system, but did not have enough enrollments to to verify using VoiceIt API 2.0. This time around, user successfully enrolls, but fails the verification once, then successfully verifies
+```
+[Incoming Call] -> Amazon Connect
+Amazon Connect -> connect-twilio-initial Lambda Function
+                  1) sets info.enrolling in DynamoDB to true
+connect-twilio-initial -> Amazon Connect
+Amazon Connect -> [Transfer Call] -> Twilio Phone Number
+Twilio Phone Number -> [HTTP POST] -> twilioserver Lambda Function
+                                      (Enroll User)
+                                        1) set info.enrolling in DynamoDB to false
+                                        2) Successful Enrollment #1-> [HTTP POST] -> twilioserver (repeat until info.numEnrollments = 3 in DynamoDB)
+twilioserver -> [Transfer Call] -> Amazon Connect
+Amazon Connect -> connect-twilio-initial
+                  1) Modifies info.verifying in DynamoDB to true
+connect-twilio-initial -> Amazon Connect
+Amazon Connect -> [Transfer Call] -> Twilio Phone Number
+Twilio Phone Number -> [HTTP POST] -> twilioserver
+                                      (Verify User)
+                                        1) set info.verifying in DynamoDB to false
+                                        2) Failed Verification -> [HTTP POST] twilioserver
+                                        3) Succeeded Verification ->  set info.verified to true and info.authTime to current time in DynamoDB
+twilioserver -> [Call Transfer] -> Amazon Connect
+Amazon Connect -> connect-twilio-initial
+                  1) check if timestamp is 10 seconds or newer
+                  2) Success
+
+connect-twilio-initial -> Amazon Connect (User verified as logged in)
+```
+
+> User already exists in system, and successfully verifies
+
+```
+[Incoming Call] -> Amazon Connect
+Amazon Connect -> connect-twilio-initial Lambda Function
+                  1) sets info.verifying in DynamoDB to true
+connect-twilio-initial -> Amazon Connect
+Amazon Connect -> [Transfer Call] -> Twilio Phone Number
+Twilio Phone Number -> [HTTP POST] -> twilioserver Lambda Function
+                                      (Verify User)
+                                        1) set info.enrolling in DynamoDB to false
+                                        2) Succeeded Verification ->  set info.verified to true and info.authTime to current time in DynamoDB
+twilioserver -> [Transfer Call] -> Amazon Connect
+Amazon Connect -> connect-twilio-initial
+                  1) check if timestamp is 10 seconds or newer
+                  2) Success
+
+connect-twilio-initial -> Amazon Connect (User verified as logged in)
+```
+
+> User successfully verifies, but ends call before Twilio server transfers call back to Amazon Connect, then a spoofer attempts to use the phone number knowing `info.verified` is true
+
+> User already exists in system, and successfully verifies
+
+```
+[Incoming Call] -> Amazon Connect
+Amazon Connect -> connect-twilio-initial Lambda Function
+                  1) Sets info.verifying in DynamoDB to true
+connect-twilio-initial -> Amazon Connect
+Amazon Connect -> [Transfer Call] -> Twilio Phone Number
+Twilio Phone Number -> [HTTP POST] -> twilioserver Lambda Function
+                                      (Verify User)
+                                        1) set info.enrolling in DynamoDB to false
+                                        3) Succeeded Verification ->  set info.verified to true and info.authTime to current time in DynamoDB
+! twilioserver -> [Transfer Call] -> Amazon Connect
+
+[Incoming Call from Spoofer using same phone number] -> Amazon Connect
+
+Amazon Connect -> connect-twilio-initial
+                  1) check if timestamp is 10 seconds or newer
+                  2) Fail
+                  3) sets info.verifying in DynamoDB to true
+connect-twilio-initial -> Amazon Connect
+Amazon Connect -> [Transfer Call] -> Twilio Phone Number
+Twilio Phone Number -> [HTTP POST] -> twilioserver Lambda Function
+                                      (Verify User)
+                                        1) set info.enrolling in DynamoDB to false
+                                        2) Fail Verification -> [HTTP POST] -> twilioserver
+(Spoofer gives up)
+```
+
+---
+
 **The code examples in this repository are heavily commented to explain what the code is doing. If you are having trouble, take a look there as well as the imported Contact Flow**
