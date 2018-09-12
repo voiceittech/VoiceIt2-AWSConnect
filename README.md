@@ -4,14 +4,14 @@
 
 We created this repository for our clients who want to integrate our services with Amazon Connect's Call Center functionality.
 
-Both programs are intended to run on AWS Lambda as part of a serverless architecture. They are in a sense, intended to run together, and utilize AWS DynamoDB to "glue" together their logic as well as ensure a secure way to signal a successful authentication from Twilio's server back to Amazon Connect.
+Both programs are intended to run on AWS Lambda as part of a serverless architecture. They are intended to run together and utilize AWS DynamoDB to "glue" together their logic as well as ensure a secure way to signal a successful authentication from Twilio's server back to Amazon Connect.
 
 The directory structure is as follows:
 
 | *Path* | *Language* | *Description* |
 | -- | -- | -- |
 | [/connect-twilio-initial](./connect-twilio-initial) | Go | Server which encompasses the initial server side logic when the user calls Amazon Connect |
-| [/twilioserver](./twilioserver) | NodeJS | Server that handles call recording using using Twilio's API |
+| [/twilioserver](./twilioserver) | NodeJS | Server that handles call recording and interacting with VoiceIt's enrollment/verification endpoints using using Twilio's API and VoiceIt API 2.0 wrapper |
 
 If you need help setting up your workflow, try importing [exampleconnectvoiceit](./exampleconnectvoiceit) into a blank Contact Flow for inspiration.
 ![example_screenshot](./screenshot.png)
@@ -241,3 +241,6 @@ Twilio Phone Number -> [HTTP POST] -> twilioserver Lambda Function
 ---
 
 **The code examples in this repository are heavily commented to explain what the code is doing. If you are having trouble, take a look there as well as the imported Contact Flow**
+
+The structure of a User object in DynamoDB is as follows:
+![dynamoscreenshot](./dynamoscreenshot.png)
