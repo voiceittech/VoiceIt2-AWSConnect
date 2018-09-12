@@ -1,4 +1,4 @@
-// Primary Driver Program (imports app)
+// Primary Driver Program (imports ./app.js)
 
 const awsServerlessExpress = require('aws-serverless-express'); // npm i aws-serverless-express --save
 const app = require('./app');
