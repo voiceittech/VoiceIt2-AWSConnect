@@ -240,6 +240,8 @@ Twilio Phone Number -> [HTTP POST] -> twilioserver Lambda Function
 
 ---
 
+## Other Information
+
 **The code examples in this repository are heavily commented to explain what the code is doing. If you are having trouble, take a look there as well as the imported Contact Flow**
 
 The structure of a User object in DynamoDB is as follows:
