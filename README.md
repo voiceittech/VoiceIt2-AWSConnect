@@ -21,7 +21,7 @@ If you need help setting up your workflow, try importing [exampleconnectvoiceit]
 
 ---
 
-## Deploying Example
+## Deploying Demo
 
 ### Prerequisites
 1. Amazon Connect Call Instance with a free phone number
@@ -123,6 +123,8 @@ zip -r deployment.zip *
 > In Twilio web console...
 
 12. Route the phone number to do a `POST` request to `https://[0000000000].execute-api.[location].amazonaws.com/default/[function_name]` as you saw in the API endpoint above
+
+**Congratulations! Now you have set up the Connect-VoiceIt integration demo. Please test by calling the Amazon Connect phone number**
 
 ---
 
