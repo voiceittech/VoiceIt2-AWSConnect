@@ -223,7 +223,7 @@ Twilio Phone Number -> [HTTP POST] -> twilioserver Lambda Function
                                       (Verify User)
                                         1) set info.enrolling in DynamoDB to false
                                         3) Succeeded Verification ->  set info.verified to true and info.authTime to current time in DynamoDB
-! twilioserver -> [Transfer Call] -> Amazon Connect
+twilioserver -> [Call Ends]
 
 [Incoming Call from Spoofer using same phone number] -> Amazon Connect
 
