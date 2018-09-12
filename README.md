@@ -1,3 +1,4 @@
+![banner](./connecttwilio.png)
 # Amazon Connect & VoiceIt 2.0 Voice Integration Demo
 ### Andrew Lee
 ### 09/12/18
