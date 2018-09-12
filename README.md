@@ -18,9 +18,69 @@ If you need help setting up your workflow, see [exampleconnectvoiceit](./example
 
 ---
 
-## All Use Cases
-> In Amazon Connect Call Center Console...
+## Potential Flows Call Flow
+> User successfully enrolls for the first time, and successfully verifies
 
+```
+[Incoming Call] -> Amazon Connect
+Amazon Connect -> connect-twilio-initial Lambda Function
+                  1) Creates a DynamoDB entry
+                  2) sets info.enrolling in DynamoDB to true
+connect-twilio-initial -> Amazon Connect
+Amazon Connect -> [Transfer Call] -> Twilio Phone Number
+Twilio Phone Number -> [HTTP POST] -> twilioserver Lambda Function
+                                      (Enroll User)
+                                        1) set info.enrolling in DynamoDB to false
+                                        2) Successful Enrollment #1-> [HTTP POST] -> twilioserver
+                                        3) Successful Enrollment #2-> [HTTP POST] -> twilioserver
+                                        4) Successful Enrollment #3-> [HTTP POST] -> twilioserver
+twilioserver -> [Transfer Call] -> Amazon Connect
+Amazon Connect -> connect-twilio-initial
+                  1) Modifies info.verifying in DynamoDB to true
+connect-twilio-initial -> Amazon Connect
+Amazon Connect -> [Transfer Call] -> Twilio Phone Number
+Twilio Phone Number -> [HTTP POST] -> twilioserver
+                                      (Verify User)
+                                        1) set info.verifying in DynamoDB to false
+                                        2) Successful Verification -> set info.verified to true and info.authTime to current time in DynamoDB
+twilioserver -> [Call Transfer] -> Amazon Connect
+Amazon Connect -> connect-twilio-initial
+                  1) check if timestamp is 10 seconds or newer
+                  2) Success
+
+connect-twilio-initial -> Amazon Connect (User verified as logged in)
+```
+
+> User is already registered in the system, but does not have enough enrollments to to verify using VoiceIt API 2.0
+```
+[Incoming Call] -> Amazon Connect
+Amazon Connect -> connect-twilio-initial Lambda Function
+                  1) Creates a DynamoDB entry
+                  2) sets info.enrolling in DynamoDB to true
+connect-twilio-initial -> Amazon Connect
+Amazon Connect -> [Transfer Call] -> Twilio Phone Number
+Twilio Phone Number -> [HTTP POST] -> twilioserver Lambda Function
+                                      (Enroll User)
+                                        1) set info.enrolling in DynamoDB to false
+                                        2) Successful Enrollment #1-> [HTTP POST] -> twilioserver
+                                        3) Successful Enrollment #2-> [HTTP POST] -> twilioserver
+                                        4) Successful Enrollment #3-> [HTTP POST] -> twilioserver
+twilioserver -> [Transfer Call] -> Amazon Connect
+Amazon Connect -> connect-twilio-initial
+                  1) Modifies info.verifying in DynamoDB to true
+connect-twilio-initial -> Amazon Connect
+Amazon Connect -> [Transfer Call] -> Twilio Phone Number
+Twilio Phone Number -> [HTTP POST] -> twilioserver
+                                      (Verify User)
+                                        1) set info.verifying in DynamoDB to false
+                                        2) Successful Verification -> set info.verified to true and info.authTime to current time in DynamoDB
+twilioserver -> [Call Transfer] -> Amazon Connect
+Amazon Connect -> connect-twilio-initial
+                  1) check if timestamp is 10 seconds or newer
+                  2) Success
+
+connect-twilio-initial -> Amazon Connect (User verified as logged in)
+```
 
 ---
 
@@ -75,7 +135,7 @@ zip deployment.zip main
 
 7. Upload the `deployment.zip` file you just created under the "Function Code" section, and change the `Handler` attribute from 'hello' to 'main'
 8. Add the environment variables `VIAPIKEY` and `VIAPITOKEN` (which correspond to the API 2.0 key/token credentials you can view at [https://voiceit.io/settings](https://voiceit.io/settings))
-9. Save
+9. Save Lambda Function
 10. Take note of the Lambda ARN at the top of the page, which will look like `arn:aws:lambda:[location]:00000000000:function:[functionname]` which we will plug into the Contact Flow
 
 > Back in Amazon Connect Call Center Console Contact Flow view...
@@ -120,10 +180,14 @@ zip -r deployment.zip *
 
 6. Add an API Gateway trigger (Create a new API with Security=Open [other options can be left to default values]) & Add
 7. Under "Function code", change the `Code entry type` to be "Upload a .ZIP file" and upload `deployment.zip` you created for Node.js
-8. Add the environment variables `VIAPIKEY` and `VIAPITOKEN` (which correspond to the API 2.0 key/token credentials you can view at [https://voiceit.io/settings](https://voiceit.io/settings)) as well as the `PHRASE` environment variable as "never forget tomorrow is a new day"
-9. Save
-10. Take note of the API endpoint which looks like `https://0000000000.execute-api.[location].amazonaws.com/default/twilioserver` as we will need to add it to Twilio's API later
+8. Change the `Handler` parameter to be "lambda.handler" (as the file `lambda.js` is the entry point for our application)
+9. Add the environment variables `VIAPIKEY` and `VIAPITOKEN` (which correspond to the API 2.0 key/token credentials you can view at [https://voiceit.io/settings](https://voiceit.io/settings)) as well as the `PHRASE` environment variable as "never forget tomorrow is a new day"
+10. Save Lambda Function
+11. Take note of the API endpoint which looks like `https://0000000000.execute-api.[location].amazonaws.com/default/twilioserver` as we will need to add it to Twilio's API later
 
 > In Twilio web console...
 
-11. Route the phone number to do a `POST` request to `https://0000000000.execute-api.[location].amazonaws.com/default/twilioserver` as you saw in the API endpoint above
+12. Route the phone number to do a `POST` request to `https://0000000000.execute-api.[location].amazonaws.com/default/twilioserver` as you saw in the API endpoint above
+
+---
+**The code examples in this repository are heavily commented to explain what the code is doing. If you are having trouble, take a look there as well as the imported Contact Flow**
