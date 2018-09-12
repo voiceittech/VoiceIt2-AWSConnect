@@ -8,8 +8,8 @@ Both programs are intended to run on AWS Lambda as part of a serverless architec
 
 The directory structure is as follows:
 
-| -- | -- | -- |
 | *Path* | *Language* | *Description* |
+| -- | -- | -- |
 | [/connect-twilio-initial](./connect-twilio-initial) | Go | Server which encompasses the initial server side logic when the user calls Amazon Connect |
 | [/twilioserver](./twilioserver) | NodeJS | Server that handles call recording using using Twilio's API |
 
