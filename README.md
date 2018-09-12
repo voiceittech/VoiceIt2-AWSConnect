@@ -13,9 +13,8 @@ The directory structure is as follows:
 | [/connect-twilio-initial](./connect-twilio-initial) | Go | Server which encompasses the initial server side logic when the user calls Amazon Connect |
 | [/twilioserver](./twilioserver) | NodeJS | Server that handles call recording using using Twilio's API |
 
-If you need help setting up your workflow, see [exampleconnectvoiceit](./exampleconnectvoiceit) for inspiration.
+If you need help setting up your workflow, try importing [exampleconnectvoiceit](./exampleconnectvoiceit) into a blank Contact Flow for inspiration.
 ![example_screenshot](./screenshot.png)
-
 
 ---
 
