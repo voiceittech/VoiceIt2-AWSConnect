@@ -18,15 +18,15 @@ app.use(bodyParser());
 router.use(awsServerlessExpressMiddleware.eventContext()); // Use aws-serverless-express/middleware event context for our application
 let myVoiceIt = new voiceit2(process.env.VIAPIKEY, process.env.VIAPITOKEN); // initialize VoiceIt2 object
 
-// The get endpoint '/twilioserver' is a stripped down info site which can be accessed by typing the Application's API Gateway URL into the browser
-router.get('/twilioserver', (req, res) => {
-  res.send('VoiceIt Amazon Connect/Twilio integration Demo. Please try calling 786-864-5177 to test it out.');
+// The get endpoint '/appname' is a stripped down info site which can be accessed by typing the Application's API Gateway URL into the browser
+router.get('/' + process.env.APPNAME, (req, res) => {
+  res.send('VoiceIt Amazon Connect/Twilio integration Demo. Please try calling ' + process.env.AMAZONCONNECTPHONENUMBER + ' to test it out.');
 });
 
 
 // First entry point for Twilio calls.
 // Once you set up your Twilio account, request a phone number, and use the Twilio Web Console to set that phone number to do a POST request to this endpoint (the exact URL of the endpoint can be seen when you
-router.post('/twilioserver', (req, res) => {
+router.post('/' + process.env.APPNAME, (req, res) => {
   const phoneNumber = req.body.From;
 
   // When this function is initially invoked (i.e. the phone number that POSTS to this endpoint is called), param will be null
@@ -73,7 +73,7 @@ const enroll = (req, res, phoneNumber, userId) => { // Enrollment initializer fu
   dynamodbhelpers.setEnrollingVerifyingFalse(phoneNumber, () => { // set both enrolling and verifying variables to be false
     twiml.say({voice: 'alice'}, 'Please state the phrase, ' + process.env.PHRASE + ', after the tone.');
     twiml.record({ // This time, on top of having Twilio playing a prompt, we want Twilio to record a 5 second audio clip from the user (which we will use to enroll them to VoiceIt)
-      action: 'twilioserver?param=processenroll', // Note, we will be triggering another /twilioserver POST request, but this time including param=processenroll [see explanation of param parameter above to see more]
+      action: process.env.APPNAME + '?param=processenroll', // Note, we will be triggering another /appname POST request, but this time including param=processenroll [see explanation of param parameter above to see more]
       trim: 'do-not-trim',
       maxLength: 5,
     });
@@ -88,7 +88,7 @@ const verify = (req, res, phoneNumber, userId) => { // Verify intializer functio
   dynamodbhelpers.setEnrollingVerifyingFalse(phoneNumber, () => { // set both enrolling and verifying variables to be false
     twiml.say({voice: 'alice'}, 'Please state the phrase, ' + process.env.PHRASE + ', after the tone.');
     twiml.record({
-      action: 'twilioserver?param=processverify', // Note, we will be triggering another /twilioserver POST request, but this time including param=processverify [see at explanation of param parameter above to see more]
+      action: process.env.APPNAME + '?param=processverify', // Note, we will be triggering another /appname POST request, but this time including param=processverify [see at explanation of param parameter above to see more]
       trim: 'do-not-trim',
       maxLength: 5,
     });
@@ -116,14 +116,14 @@ const processenroll = (req, res, phoneNumber, userId, numEnrollments) => { // Ca
       if (json['responseCode'] === 'SUCC') { // If the enrollment succeedes...
         dynamodbhelpers.setNumberOfEnrollments(phoneNumber, 3, () => { // update the number of enrollments on DynamoDB to be 3
           twiml.say({voice: 'alice'}, 'We successfully enrolled you in our system. We will now transfer your call back to Amazon Connect to authenticate.');
-          twiml.dial('786-864-5177'); // This time, transfer the call back to Amazon Connect so that the Verification process can start from scratch
+          twiml.dial(process.env.AMAZONCONNECTPHONENUMBER); // This time, transfer the call back to Amazon Connect so that the Verification process can start from scratch
           res.type('text/xml');
           res.send(twiml.toString());
         });
       } else { // If the enrollment failed, record another 5 second audio clip, and attempt to run processenroll(...) again using that clip.
         twiml.say({voice: 'alice'}, 'Last enrollment failed. Please repeat the phrase, ' + process.env.PHRASE + ', after the tone.');
         twiml.record({
-          action: 'twilioserver?param=processenroll',
+          action: process.env.APPNAME + '?param=processenroll',
           trim: 'do-not-trim',
           maxLength: 5,
         });
@@ -142,20 +142,20 @@ const processenroll = (req, res, phoneNumber, userId, numEnrollments) => { // Ca
     }, (json) => {
       if (json['responseCode'] === 'SUCC') { // If the enrollment succeeds...
         dynamodbhelpers.setNumberOfEnrollments(phoneNumber, numEnrollments, () => { // Set the number of enrollments to be the incremented value of numEnrollments
-          // Record another audio recording, and redirect back to /twilioserver
+          // Record another audio recording, and redirect back to /appname
           twiml.say({voice: 'alice'}, 'Please repeat the phrase, ' + process.env.PHRASE + ', after the tone.')
           twiml.record({
-            action: 'twilioserver?param=processenroll',
+            action: process.env.APPNAME + '?param=processenroll',
             trim: 'do-not-trim',
             maxLength: 5,
           });
           res.type('text/xml');
           res.send(twiml.toString());
         });
-      } else { // If the enrollment failed, record another audio clip and redirect back to /twilioserver without updating the enrollment count on DynamoDB
+      } else { // If the enrollment failed, record another audio clip and redirect back to /appname without updating the enrollment count on DynamoDB
         twiml.say({voice: 'alice'}, 'Last enrollment failed. Please repeat the phrase, ' + process.env.PHRASE + ', after the tone.')
         twiml.record({
-          action: 'twilioserver?param=processenroll',
+          action: process.env.APPNAME + '?param=processenroll',
           trim: 'do-not-trim',
           maxLength: 5,
         });
@@ -182,14 +182,14 @@ const processverify = (req, res, phoneNumber, userId) => { // Called if the prog
     if (json['status'] === 200 && json['responseCode'] === 'SUCC') { // If verification succeeded...
       dynamodbhelpers.setSuccessfulAuthentication(phoneNumber, () => { // On DynamoDB, set info.verified to be true, and write the info.authTime to be the current time string in RFC3339 format
         twiml.say({voice: 'alice'}, 'Successfuly verified. Transferring back to Connect as a verified user.');
-        twiml.dial('786-864-5177'); // Call back to Amazon Connect once we set the verification success variables
+        twiml.dial(process.env.AMAZONCONNECTPHONENUMBER); // Call back to Amazon Connect once we set the verification success variables
         res.type('text/xml');
         res.send(twiml.toString());
       });
     } else { // If verification failed, repeat the process with another recording
       twiml.say({voice: 'alice'}, 'Failed to verify. Please try again by stating the phrase, never forget tomorrow is a new day, after the tone.');
       twiml.record({
-        action: 'twilioserver?param=processverify',
+        action: process.env.APPNAME + '?param=processverify',
         trim: 'do-not-trim',
         maxLength: 5,
         });

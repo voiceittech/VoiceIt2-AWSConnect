@@ -5,6 +5,8 @@
 
 We created this repository for our clients who want to integrate our services with Amazon Connect's Call Center functionality.
 
+If you want a quick demo of the capabilities, feel free to check it out by calling the number [786-864-5177](tel:7868645177).
+
 Both programs are intended to run on AWS Lambda as part of a serverless architecture. They are intended to run together and utilize AWS DynamoDB to "glue" together their logic as well as ensure a secure way to signal a successful authentication from Twilio's server back to Amazon Connect.
 
 The directory structure is as follows:
@@ -58,7 +60,7 @@ go get -u github.com/aws/aws-lambda-go/...
 go get -u github.com/aws/aws-sdk-go/...
 ```
 
-6. `cd` into the `connect-twilio-initial` directory in this repository, build the executable for Lambda, and package it into a ZIP file
+6. `cd` into the `connect-twilio-initial` directory in this repository, build the executable for Lambda, and package it into a ZIP file (or you can use the `deployment.zip` file we provide)
 
 ```shell
 cd [root_of_cloned_repository]/connect-twilio-initial
@@ -101,8 +103,7 @@ cd [root_of_cloned_repo]/twilioserver
 npm i
 ```
 
-3. Modify the phone numbers in `app.js` to contact your Amazon Connect phone number. (Any time you see `twiml.dial('786-864-5177');`, just replace the phone number with the phone number you defined in your Amazon Connect Call Center for this example)
-4. Zip the deployment as `deployment.zip`
+4. Zip the deployment as `deployment.zip` (or you can just use the provided `deployment.zip` file if you do not need to change anything)
 
 ```shell
 zip -r deployment.zip *
@@ -111,18 +112,17 @@ zip -r deployment.zip *
 > In AWS Lambda web UI...
 
 5. Create a new Lambda Function  with the `Node.js 8.10` runtime (Either create a new role, or use an existing role with Full Access to DynamoDB), and the name "twilioserver".
-**Note: In the name of brevity, we do not include more complex API routing calls and instead focus on using the same exact endpoint of `/twilioserver` throughout our code. If you choose to change the Lambda function name, you must change all endpoint calls to match this as well as modify the next Twilio section accordingly**
 
 6. Add an API Gateway trigger (Create a new API with Security=Open [other options can be left to default values]) & Add
 7. Under "Function code", change the `Code entry type` to be "Upload a .ZIP file" and upload `deployment.zip` you created for Node.js
 8. Change the `Handler` parameter to be "lambda.handler" (as the file `lambda.js` is the entry point for our application)
-9. Add the environment variables `VIAPIKEY` and `VIAPITOKEN` (which correspond to the API 2.0 key/token credentials you can view at [https://voiceit.io/settings](https://voiceit.io/settings)) as well as the `PHRASE` environment variable as "never forget tomorrow is a new day"
+9. Add the environment variables `VIAPIKEY` and `VIAPITOKEN` (which correspond to the API 2.0 key/token credentials you can view at [https://voiceit.io/settings](https://voiceit.io/settings)), the `PHRASE` environment variable as "never forget tomorrow is a new day", the `APPNAME` environment variable which should be the equal to the name of your Lambda Function, and the `AMAZONCONNECTPHONENUMBER` environment variable which should be your Amazon Connect phone number which sould be in the form "111-222-3333"
 10. Save Lambda Function
-11. Take note of the API endpoint which looks like `https://0000000000.execute-api.[location].amazonaws.com/default/twilioserver` as we will need to add it to Twilio's API later
+11. Take note of the API endpoint which looks like `https://[0000000000].execute-api.[location].amazonaws.com/default/[function_name]` as we will need to add it to Twilio's API later
 
 > In Twilio web console...
 
-12. Route the phone number to do a `POST` request to `https://0000000000.execute-api.[location].amazonaws.com/default/twilioserver` as you saw in the API endpoint above
+12. Route the phone number to do a `POST` request to `https://[0000000000].execute-api.[location].amazonaws.com/default/[function_name]` as you saw in the API endpoint above
 
 ---
 
