@@ -22,7 +22,7 @@ var (
 	myVoiceIt voiceit2.VoiceIt2
 )
 
-type ItemInfo struct {
+type ItemInfo struct { // Struct to model DynamoDB Info object
 	UserId         string `json:"userId"`
 	Verifying      bool   `json:"verifying"`
 	Enrolling      bool   `json:"enrolling"`
@@ -31,14 +31,15 @@ type ItemInfo struct {
 	AuthTime       string `json:"authTime"`
 }
 
-type Item struct {
+type Item struct { // Struct to model DynamoDB User object
 	PhoneNumber string   `json:"phoneNumber"`
 	Info        ItemInfo `json:"info"`
 }
 
+// Golang Handler function which follows the AWS HTTP interface
 func Handler(ctx context.Context, connectEvent events.ConnectEvent) (events.ConnectResponse, error) {
 
-	sess, err := session.NewSession(&aws.Config{
+	sess, err := session.NewSession(&aws.Config{ // Initialize AWS session (by default, takes credentials from Lambda environment)
 		Region: aws.String("us-east-1")},
 	)
 
@@ -67,7 +68,7 @@ func Handler(ctx context.Context, connectEvent events.ConnectEvent) (events.Conn
 		return nil, err
 	}
 
-	// Convert dynamodb object to native stuct Item{} defined above
+	// Map DynamoDB object to native Item{} struct defined above
 	item := Item{}
 	err = dynamodbattribute.UnmarshalMap(result.Item, &item)
 
@@ -87,9 +88,11 @@ func Handler(ctx context.Context, connectEvent events.ConnectEvent) (events.Conn
 	}
 }
 
+// User's first time calling the Connect Number.
+// Create the user's entry on DynamoDB and then return to Amazon Connect to progress to the enrollment process on the Twilio server
 func EnrollFromScratch(ctx context.Context, phoneNumber string, svc *dynamodb.DynamoDB) (events.ConnectResponse, error) {
 
-	// Call CreateUser() and unmarshal that into the createuserreturn struct so that we can easily extract the values
+	// Call VoiceIt CreateUser() and unmarshal that into the createuserreturn struct so that we can easily extract the UserId
 	var createuserreturn structs.CreateUserReturn
 	json.Unmarshal([]byte(myVoiceIt.CreateUser()), &createuserreturn)
 	userId := createuserreturn.UserId
@@ -104,23 +107,24 @@ func EnrollFromScratch(ctx context.Context, phoneNumber string, svc *dynamodb.Dy
 			Verifying:      false,
 			Enrolling:      true,
 			Verified:       false,
-			AuthTime:       time.Now().Format(time.RFC3339),
+			AuthTime:       time.Now().Format(time.RFC3339), // Not explicitly used for any logic, but empty strings are not accepted
 			NumEnrollments: 0,
 		},
 	}
 
+	// Marshal struct to map[string]*dynamodb.AttributeValue so we can send to DynamoDB
 	av, err := dynamodbattribute.MarshalMap(item)
 	if err != nil {
-		log.Println("Error marshelling struct to dynamodbattribute object:")
+		log.Println("Error marshaling struct to map[string]*dynamodb.AttributeValue")
 		log.Println(err.Error())
 	}
 
 	input := dynamodb.PutItemInput{
 		Item:      av,
-		TableName: aws.String("ConnectTwilio"),
+		TableName: aws.String("ConnectTwilio"), // Save to ConnectTwilio table
 	}
 
-	_, err = svc.PutItem(&input)
+	_, err = svc.PutItem(&input) // Put entry into DynamoDB database
 	if err != nil {
 		log.Println("Got error calling PutItem:")
 		log.Println(err.Error())
@@ -128,12 +132,18 @@ func EnrollFromScratch(ctx context.Context, phoneNumber string, svc *dynamodb.Dy
 		log.Println("Successfuly created new item", item)
 	}
 
+	// ConnectResponse return back to Amazon Connect allows the Contact Flow to parse the value "enrollfromscratch" from the key "Branch" as an external value we can use in the Connect Contact Flow GUI
+	// This case will trigger Amazon Connect to play the prompt "you do not exist in our system. please prepare to enroll in our system as prompted" and transfer the user to the Twilio Phone number
 	return events.ConnectResponse{
 		"Branch": "enrollfromscratch",
 	}, nil
 }
 
+// User's called in the past, but did not manage to enroll 3 successful voice enrollments
+// return to Amazon Connect to progress to the enrollment process on the Twilio server
 func Enroll(ctx context.Context, phoneNumber string, svc *dynamodb.DynamoDB) (events.ConnectResponse, error) {
+
+	// Set info.enrolling to true and info.verifying to be false
 	input := dynamodb.UpdateItemInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":v": {
@@ -161,11 +171,15 @@ func Enroll(ctx context.Context, phoneNumber string, svc *dynamodb.DynamoDB) (ev
 		log.Println("Successfuly updated info.enrolling to be true")
 	}
 
+	// ConnectResponse return back to Amazon Connect allows the Contact Flow to parse the value "enroll" from the key "Branch" as an external value we can use in the Connect Contact Flow GUI
+	// This case will trigger Amazon Connect to play the prompt "it seems you are registered in our system, but you did not enroll an adequate number of voice phrases into our system. Please make sure you do not end the call before we confirm that you are enrolled." and transfer the user to the Twilio Phone number
 	return events.ConnectResponse{
 		"Branch": "enroll",
 	}, nil
 }
 
+// User's called in the past, and have 3 successful enrollments
+// return to Amazon Connect to progress to the verification process on the Twilio server
 func Verify(ctx context.Context, phoneNumber string, svc *dynamodb.DynamoDB) (events.ConnectResponse, error) {
 
 	input := dynamodb.UpdateItemInput{
@@ -195,20 +209,25 @@ func Verify(ctx context.Context, phoneNumber string, svc *dynamodb.DynamoDB) (ev
 		log.Println("Successfuly updated info.verify to be true")
 	}
 
+	// ConnectResponse return back to Amazon Connect allows the Contact Flow to parse the value "verify" from the key "Branch" as an external value we can use in the Connect Contact Flow GUI
+	// This case will trigger Amazon Connect to play the prompt "you exist in our system. please prepare to verify as prompted" and transfer the user to the Twilio Phone number
 	return events.ConnectResponse{
 		"Branch": "verify",
 	}, nil
 
 }
 
+// User supposedly verified on Twilio Server using VoiceIt's voice verification process
+// To be sure that this verification is valid, check the time stamp to make sure it hasn't been more than 10 seconds
 func Verified(ctx context.Context, phoneNumber string, timeString string, svc *dynamodb.DynamoDB) (events.ConnectResponse, error) {
-	dbTime, err := time.Parse(time.RFC3339, timeString)
+	dbTime, err := time.Parse(time.RFC3339, timeString) // Parse the date/time string object stored in DynamoDB when the user was successfully verified on the Twilio server as a RFC3339 formatted time object
 	if err != nil {
 		log.Println("Failed to parse time stored in DynamoDB database")
 		log.Println(err.Error())
 	}
 	if time.Now().Sub(dbTime) < 10*time.Second { // Verification occured recently (not prior to 10 seconds ago)
 
+		// Set info.verified to false
 		input := dynamodb.UpdateItemInput{
 			ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 				":v": {
@@ -233,9 +252,12 @@ func Verified(ctx context.Context, phoneNumber string, timeString string, svc *d
 			log.Println("Successfuly updated info.verified to be false")
 		}
 
+		// ConnectResponse return back to Amazon Connect allows the Contact Flow to parse the value "verified" from the key "Branch" as an external value we can use in the Connect Contact Flow GUI
+		// This case will trigger Amazon Connect to be able to treat the current caller as an authenticated user in the Call Center as long as they are on the line
 		return events.ConnectResponse{
 			"Branch": "verified",
 		}, nil
+
 	} else { // Verification happened too long ago. Set info.verified to false, and set info.verifying to true in order have the user verify from scratch.
 
 		input := dynamodb.UpdateItemInput{
@@ -265,6 +287,8 @@ func Verified(ctx context.Context, phoneNumber string, timeString string, svc *d
 			log.Println("Successfuly updated info.verified to be false, and info.verifying to be true")
 		}
 
+		// ConnectResponse return back to Amazon Connect allows the Contact Flow to parse the value "failverified" from the key "Branch" as an external value we can use in the Connect Contact Flow GUI
+		// This case will trigger Amazon Connect to play the prompt "You were verified too long ago. Please prepare to verify again as prompted" and transfer the user to the Twilio Phone number
 		return events.ConnectResponse{
 			"Branch": "failedverified",
 		}, nil
