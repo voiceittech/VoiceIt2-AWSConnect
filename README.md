@@ -213,8 +213,6 @@ connect-twilio-initial -> Amazon Connect (User verified as logged in)
 
 > User successfully verifies, but ends call before Twilio server transfers call back to Amazon Connect, then a spoofer attempts to use the phone number knowing `info.verified` is true
 
-> User already exists in system, and successfully verifies
-
 ```
 [Incoming Call] -> Amazon Connect
 Amazon Connect -> connect-twilio-initial Lambda Function
