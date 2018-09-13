@@ -2,7 +2,7 @@
 // Defines the endpoints and functions
 
 'use strict'
-const awsServerlessExpressMiddleware = require('aws-serverless-express/middleware');
+const awsServerlessExpressMiddleware = require('aws-serverless-express/middleware'); // npm i aws-serverless-express --save
 const http = require('http');
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -25,13 +25,13 @@ router.get('/' + process.env.APPNAME, (req, res) => {
 
 
 // First entry point for Twilio calls.
-// Once you set up your Twilio account, request a phone number, and use the Twilio Web Console to set that phone number to do a POST request to this endpoint (the exact URL of the endpoint can be seen when you
+// Once you set up your Twilio account, request a phone number, and use the Twilio Web Console to set that phone number to do a POST request to this endpoint (the exact URL of the endpoint can be seen when you go to the API Gateway section of the Lambda function)
 router.post('/' + process.env.APPNAME, (req, res) => {
   const phoneNumber = req.body.From;
 
   // When this function is initially invoked (i.e. the phone number that POSTS to this endpoint is called), param will be null
-  // However, other parts of this program will also POST to this endpoint in order to follow a recursive program flow (the Twilio audio recording URL needs to be taken from a request)...
-  // (which cannot updated with the URL value without triggering another POST request after the audio is recorded)
+  // However, other parts of this program will also POST to this same endpoint in order to follow a recursive program flow
+  // (the Twilio audio recording URL needs to be taken from a request object which cannot updated with the recording URL value without triggering another POST request to Twilio after the audio is recorded)
   const param = req.query.param;
 
   dynamodbhelpers.getUserObject(phoneNumber, (userObject) => { // Get user object from DynamoDB
@@ -44,7 +44,7 @@ router.post('/' + process.env.APPNAME, (req, res) => {
 
     } else { // If neither of the above scenarios are true, it means this function was triggered directly by Amazon Connect and we should figure out what Amazon Connect wanted us to do using the values it modified in DynamoDB
 
-      if (userObject.phoneNumber === '') {
+      if (userObject.phoneNumber === '') { // This should never happen as the connect-twilio-initial Lambda function will always create the DynamoDB table entry with the user's phone number before calling this endpoint
         const twiml = new VoiceResponse(); // object twiml is a helper function which structures TWIML (a specialized form of XML used to communicate with Twilio's API), and is sent as a response to Twilio in order to trigger a Twilio action.
         twiml.say({voice: 'alice'}, 'User phone number not found in the database.'); // add "say 'User phone number not found in the database'" to the list of actions we want Twilio to do
         res.type('text/xml');

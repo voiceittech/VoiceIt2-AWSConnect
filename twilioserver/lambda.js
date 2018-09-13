@@ -4,4 +4,4 @@ const awsServerlessExpress = require('aws-serverless-express'); // npm i aws-ser
 const app = require('./app');
 
 const server = awsServerlessExpress.createServer(app); // Instead of the standard localhost port binding declarations (i.e. app.listen()), we use aws-serverless-express middleware to glue our Express application's interface to the AWS Lambda architecture.
-exports.handler = (event, context) => awsServerlessExpress.proxy(server, event, context);
+exports.handler = (event, context) => awsServerlessExpress.proxy(server, event, context); // note, instead of using something like "app.listen([port_number]);", we, use this expression specifically for AWS Lambda
