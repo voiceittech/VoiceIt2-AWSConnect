@@ -10,6 +10,8 @@ If you want a quick demo of the capabilities, feel free to check it out by calli
 
 Both programs are intended to run on AWS Lambda as part of a serverless architecture. They are intended to run together and utilize AWS DynamoDB to "glue" together their logic as well as ensure a secure way to signal a successful authentication from Twilio's server back to Amazon Connect.
 
+At the time of this writing, Amazon Connect does not directly allow for developers to access voice recordings in a way that would allow people to send them to our API to use our voice biometrics service. Because of this, the enrollment/verification steps are done using Twilio's API. We are hosting the Twilio server on AWS Lambda in order to show that you can host the entire achitecture on AWS Cloud Services, but in theory, this can be hosted anywhere you want (so long as it has access to the DynamoDB database you will use to communicate with Amazon Connect [read more below]).
+
 The directory structure is as follows:
 
 | *Path* | *Language* | *Description* |
