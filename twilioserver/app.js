@@ -15,6 +15,11 @@ const app = express();
 const router = express.Router();
 app.use(bodyParser());
 
+function sleepFor( sleepDuration ){
+  var now = new Date().getTime();
+  while(new Date().getTime() < now + sleepDuration){ /* do nothing */ } 
+}
+
 router.use(awsServerlessExpressMiddleware.eventContext()); // Use aws-serverless-express/middleware event context for our application
 let myVoiceIt = new voiceit2(process.env.VIAPIKEY, process.env.VIAPITOKEN); // initialize VoiceIt2 object
 
@@ -107,43 +112,22 @@ const processenroll = (req, res, phoneNumber, userId, numEnrollments) => { // Ca
 
   if (numEnrollments == 3) { // As long as this enrollment succeeds, user will have 3 successful enrollments and we can proceed to transfer them back to Amazon Connect to Verify
 
-    myVoiceIt.createVoiceEnrollmentByUrl({ // See https://api.voiceit.io if you are confused
-      userId: userId,
-      contentLanguage: 'en-US',
-      phrase: process.env.PHRASE,
-      audioFileURL: voiceUrl,
-    }, (json) => {
-      if (json['responseCode'] === 'SUCC') { // If the enrollment succeedes...
-        dynamodbhelpers.setNumberOfEnrollments(phoneNumber, 3, () => { // update the number of enrollments on DynamoDB to be 3
-          twiml.say({voice: 'alice'}, 'We successfully enrolled you in our system. We will now transfer your call back to Amazon Connect to authenticate.');
-          twiml.dial(process.env.AMAZONCONNECTPHONENUMBER); // This time, transfer the call back to Amazon Connect so that the Verification process can start from scratch
-          res.type('text/xml');
-          res.send(twiml.toString());
-        });
-      } else { // If the enrollment failed, record another 5 second audio clip, and attempt to run processenroll(...) again using that clip.
-        twiml.say({voice: 'alice'}, 'Last enrollment failed. Please repeat the phrase, ' + process.env.PHRASE + ', after the tone.');
-        twiml.record({
-          action: process.env.APPNAME + '?param=processenroll',
-          trim: 'do-not-trim',
-          maxLength: 5,
-        });
-        res.type('text/xml');
-        res.send(twiml.toString());
-      }
-    });
-
-  } else { // We will not have 3 enrollments if this enrollments succeeds...
-
-    myVoiceIt.createVoiceEnrollmentByUrl({
-      userId: userId,
-      contentLanguage: 'en-US',
-      phrase: process.env.PHRASE,
-      audioFileURL: voiceUrl,
-    }, (json) => {
-      if (json['responseCode'] === 'SUCC') { // If the enrollment succeeds...
-        dynamodbhelpers.setNumberOfEnrollments(phoneNumber, numEnrollments, () => { // Set the number of enrollments to be the incremented value of numEnrollments
-          // Record another audio recording, and redirect back to /appname
-          twiml.say({voice: 'alice'}, 'Please repeat the phrase, ' + process.env.PHRASE + ', after the tone.')
+      sleepFor(1000);
+      myVoiceIt.createVoiceEnrollmentByUrl({ // See https://api.voiceit.io if you are confused
+        userId: userId,
+        contentLanguage: 'en-US',
+        phrase: process.env.PHRASE,
+        audioFileURL: voiceUrl,
+      }, (json) => {
+        if (json['responseCode'] === 'SUCC') { // If the enrollment succeedes...
+          dynamodbhelpers.setNumberOfEnrollments(phoneNumber, 3, () => { // update the number of enrollments on DynamoDB to be 3
+            twiml.say({voice: 'alice'}, 'We successfully enrolled you in our system. We will now transfer your call back to Amazon Connect to authenticate.');
+            twiml.dial(process.env.AMAZONCONNECTPHONENUMBER); // This time, transfer the call back to Amazon Connect so that the Verification process can start from scratch
+            res.type('text/xml');
+            res.send(twiml.toString());
+          });
+        } else { // If the enrollment failed, record another 5 second audio clip, and attempt to run processenroll(...) again using that clip.
+          twiml.say({voice: 'alice'}, 'Last enrollment failed. Please repeat the phrase, ' + process.env.PHRASE + ', after the tone.');
           twiml.record({
             action: process.env.APPNAME + '?param=processenroll',
             trim: 'do-not-trim',
@@ -151,18 +135,42 @@ const processenroll = (req, res, phoneNumber, userId, numEnrollments) => { // Ca
           });
           res.type('text/xml');
           res.send(twiml.toString());
-        });
-      } else { // If the enrollment failed, record another audio clip and redirect back to /appname without updating the enrollment count on DynamoDB
-        twiml.say({voice: 'alice'}, 'Last enrollment failed. Please repeat the phrase, ' + process.env.PHRASE + ', after the tone.')
-        twiml.record({
-          action: process.env.APPNAME + '?param=processenroll',
-          trim: 'do-not-trim',
-          maxLength: 5,
-        });
-        res.type('text/xml');
-        res.send(twiml.toString());
-      }
-    });
+        }
+      });
+
+
+  } else { // We will not have 3 enrollments if this enrollments succeeds...
+
+      sleepFor(1000);
+      myVoiceIt.createVoiceEnrollmentByUrl({
+        userId: userId,
+        contentLanguage: 'en-US',
+        phrase: process.env.PHRASE,
+        audioFileURL: voiceUrl,
+      }, (json) => {
+        if (json['responseCode'] === 'SUCC') { // If the enrollment succeeds...
+          dynamodbhelpers.setNumberOfEnrollments(phoneNumber, numEnrollments, () => { // Set the number of enrollments to be the incremented value of numEnrollments
+            // Record another audio recording, and redirect back to /appname
+            twiml.say({voice: 'alice'}, 'Please repeat the phrase, ' + process.env.PHRASE + ', after the tone.')
+            twiml.record({
+              action: process.env.APPNAME + '?param=processenroll',
+              trim: 'do-not-trim',
+              maxLength: 5,
+            });
+            res.type('text/xml');
+            res.send(twiml.toString());
+          });
+        } else { // If the enrollment failed, record another audio clip and redirect back to /appname without updating the enrollment count on DynamoDB
+          twiml.say({voice: 'alice'}, 'Last enrollment failed. Please repeat the phrase, ' + process.env.PHRASE + ', after the tone.')
+          twiml.record({
+            action: process.env.APPNAME + '?param=processenroll',
+            trim: 'do-not-trim',
+            maxLength: 5,
+          });
+          res.type('text/xml');
+          res.send(twiml.toString());
+        }
+      });
   
   }
 
@@ -173,30 +181,32 @@ const processverify = (req, res, phoneNumber, userId) => { // Called if the prog
   const twiml = new VoiceResponse();
   const voiceUrl = req.body.RecordingUrl + '.wav';
 
-  myVoiceIt.voiceVerificationByUrl({
-    userId: userId,
-    contentLanguage: 'en-US',
-    phrase: process.env.PHRASE,
-    audioFileURL: voiceUrl,
-  }, (json) => {
-    if (json['status'] === 200 && json['responseCode'] === 'SUCC') { // If verification succeeded...
-      dynamodbhelpers.setSuccessfulAuthentication(phoneNumber, () => { // On DynamoDB, set info.verified to be true, and write the info.authTime to be the current time string in RFC3339 format
-        twiml.say({voice: 'alice'}, 'Successfuly verified. Transferring back to Connect as a verified user.');
-        twiml.dial(process.env.AMAZONCONNECTPHONENUMBER); // Call back to Amazon Connect once we set the verification success variables
+    sleepFor(1000);
+    myVoiceIt.voiceVerificationByUrl({
+      userId: userId,
+      contentLanguage: 'en-US',
+      phrase: process.env.PHRASE,
+      audioFileURL: voiceUrl,
+    }, (json) => {
+      if (json['status'] === 200 && json['responseCode'] === 'SUCC') { // If verification succeeded...
+        dynamodbhelpers.setSuccessfulAuthentication(phoneNumber, () => { // On DynamoDB, set info.verified to be true, and write the info.authTime to be the current time string in RFC3339 format
+          twiml.say({voice: 'alice'}, 'Successfuly verified. Transferring back to Connect as a verified user.');
+          twiml.dial(process.env.AMAZONCONNECTPHONENUMBER); // Call back to Amazon Connect once we set the verification success variables
+          res.type('text/xml');
+          res.send(twiml.toString());
+        });
+      } else { // If verification failed, repeat the process with another recording
+        twiml.say({voice: 'alice'}, 'Failed to verify. Please try again by stating the phrase, never forget tomorrow is a new day, after the tone.');
+        twiml.record({
+          action: process.env.APPNAME + '?param=processverify',
+          trim: 'do-not-trim',
+          maxLength: 5,
+          });
         res.type('text/xml');
         res.send(twiml.toString());
-      });
-    } else { // If verification failed, repeat the process with another recording
-      twiml.say({voice: 'alice'}, 'Failed to verify. Please try again by stating the phrase, never forget tomorrow is a new day, after the tone.');
-      twiml.record({
-        action: process.env.APPNAME + '?param=processverify',
-        trim: 'do-not-trim',
-        maxLength: 5,
-        });
-      res.type('text/xml');
-      res.send(twiml.toString());
-    }
-  });
+      }
+    });
+
 
 }
 
