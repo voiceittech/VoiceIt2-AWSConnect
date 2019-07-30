@@ -14,8 +14,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	voiceit2 "github.com/voiceittech/VoiceIt2-Go"
-	"github.com/voiceittech/VoiceIt2-Go/structs"
+	voiceit2 "github.com/voiceittech/VoiceIt2-Go/v2"
+	"github.com/voiceittech/VoiceIt2-Go/v2/structs"
 )
 
 var (
@@ -94,7 +94,12 @@ func EnrollFromScratch(ctx context.Context, phoneNumber string, svc *dynamodb.Dy
 
 	// Call VoiceIt CreateUser() and unmarshal that into the createuserreturn struct so that we can easily extract the UserId
 	var createuserreturn structs.CreateUserReturn
-	json.Unmarshal([]byte(myVoiceIt.CreateUser()), &createuserreturn)
+	ret, err := myVoiceIt.CreateUser()
+	if err != nil {
+		log.Println("Error running CreateUser() Call")
+		log.Println(err.Error())
+	}
+	json.Unmarshal(ret, &createuserreturn)
 	userId := createuserreturn.UserId
 
 	// Declare a new Item{} struct with the user's phone number, and userId
