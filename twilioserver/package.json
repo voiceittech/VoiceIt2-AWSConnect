@@ -13,7 +13,7 @@
     "aws-serverless-express": "^3.3.5",
     "body-parser": "^1.18.3",
     "express": "^4.16.4",
-    "moment": "^2.24.0",
+    "moment": "^2.29.4",
     "twilio": "^3.28.0",
     "voiceit2-nodejs": "^2.5.3"
   }
