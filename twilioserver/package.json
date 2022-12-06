@@ -11,8 +11,8 @@
   "dependencies": {
     "aws-sdk": "^2.401.0",
     "aws-serverless-express": "^3.3.5",
-    "body-parser": "^1.18.3",
-    "express": "^4.16.4",
+    "body-parser": "^1.20.1",
+    "express": "^4.18.2",
     "moment": "^2.24.0",
     "twilio": "^3.28.0",
     "voiceit2-nodejs": "^2.5.3"
